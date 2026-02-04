@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import javax.persistence.*;
 
 /**
@@ -39,4 +40,13 @@ public class Employee {
 
   /** The age of the employee. */
   private int age;
+
+  /** Department ID for JSON response */
+  @Transient
+  private Long departmentId;
+
+  /** Getter for departmentId to extract from department object */
+  public Long getDepartmentId() {
+    return department != null ? department.getId() : null;
+  }
 }

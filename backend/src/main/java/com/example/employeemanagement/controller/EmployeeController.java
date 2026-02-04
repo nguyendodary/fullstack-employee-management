@@ -40,50 +40,72 @@ public class EmployeeController {
    * Search employees by keyword API (requires JWT token).
    *
    * @param keyword Keyword to search in first name, last name, or email
-   * @param request HttpServletRequest to extract JWT token
+   * @param token JWT token for third party access
    * @return List of employees matching the keyword
    */
   @Operation(summary = "Search employees by keyword", description = "Search employees by keyword in first name, last name, or email (requires JWT token)")
-  @GetMapping("/search")
+  @GetMapping("/third-party")
   public List<Employee> searchEmployees(
       @RequestParam(required = false) String keyword,
-      HttpServletRequest request) {
+      @RequestParam String token) {
 
-    // Extract JWT token from Authorization header
-    String token = extractJwtToken(request);
+    // Validate JWT token from parameter
     validateThirdPartyToken(token);
 
-    List<Employee> allEmployees = employeeService.getAllEmployees();
-    
-    // If no keyword provided, return all employees
-    if (keyword == null || keyword.trim().isEmpty()) {
-      return allEmployees;
-    }
-    
-    String lowerKeyword = keyword.toLowerCase();
-
-    return allEmployees.stream()
-        .filter(emp -> 
-            (emp.getFirstName() != null && emp.getFirstName().toLowerCase().contains(lowerKeyword)) ||
-            (emp.getLastName() != null && emp.getLastName().toLowerCase().contains(lowerKeyword)) ||
-            (emp.getEmail() != null && emp.getEmail().toLowerCase().contains(lowerKeyword)))
-        .collect(Collectors.toList());
+    return employeeService.searchEmployees(keyword);
   }
 
   /**
    * Get all employees API (requires JWT token for third party).
    *
-   * @param request HttpServletRequest to extract JWT token
+   * @param token JWT token for third party access
    * @return List of all employees
    */
   @Operation(summary = "Get all employees", description = "Retrieve a list of all employees (requires JWT token)")
-  @GetMapping
-  public List<Employee> getAllEmployees(HttpServletRequest request) {
-    // Extract JWT token from Authorization header
-    String token = extractJwtToken(request);
+  @GetMapping("/third-party/all")
+  public List<Employee> getAllEmployees(@RequestParam String token) {
+    // Validate JWT token from parameter
     validateThirdPartyToken(token);
     
     return employeeService.getAllEmployees();
+  }
+
+  /**
+   * Create a new employee API (requires JWT token for third party).
+   *
+   * @param employee New employee details
+   * @param token JWT token for third party access
+   * @return New employee record
+   */
+  @Operation(summary = "Create a new employee", description = "Create a new employee record (requires JWT token)")
+  @PostMapping("/third-party")
+  public Employee createEmployee(@RequestBody Employee employee, @RequestParam String token) {
+    // Validate JWT token from parameter
+    validateThirdPartyToken(token);
+    
+    return employeeService.saveEmployee(employee);
+  }
+
+  /**
+   * Delete an employee API (requires JWT token for third party).
+   *
+   * @param id ID of the employee to be deleted
+   * @param token JWT token for third party access
+   * @return No content
+   */
+  @Operation(summary = "Delete an employee", description = "Delete an employee record by ID (requires JWT token)")
+  @DeleteMapping("/third-party/{id}")
+  public ResponseEntity<Void> deleteEmployee(@PathVariable Long id, @RequestParam String token) {
+    // Validate JWT token from parameter
+    validateThirdPartyToken(token);
+    
+    // Check if employee exists
+    if (!employeeService.getEmployeeById(id).isPresent()) {
+      throw new ResourceNotFoundException("Employee not found with id: " + id);
+    }
+    
+    employeeService.deleteEmployee(id);
+    return ResponseEntity.noContent().build();
   }
 
   /**
@@ -134,46 +156,51 @@ public class EmployeeController {
     return ResponseEntity.ok(employee);
   }
 
-  /**
-   * Create a new employee API.
-   *
-   * @param employee New employee details
-   * @return New employee record
-   */
-  @Operation(summary = "Create a new employee", description = "Create a new employee record")
-  @PostMapping
-  public Employee createEmployee(@RequestBody Employee employee) {
-    return employeeService.saveEmployee(employee);
-  }
 
   /**
-   * Update an existing employee API.
+   * Update an existing employee API (requires JWT token for third party).
    *
    * @param id ID of the employee to be updated
    * @param employeeDetails Updated employee details
+   * @param token JWT token for third party access
    * @return Updated employee record
    */
   @Operation(
       summary = "Update an existing employee",
-      description = "Update an existing employee's details")
+      description = "Update an existing employee's details (requires JWT token)")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Employee updated"),
         @ApiResponse(responseCode = "404", description = "Employee not found")
       })
-  @PutMapping("/{id}")
+  @PutMapping("/third-party/{id}")
   public ResponseEntity<Employee> updateEmployee(
-      @PathVariable Long id, @RequestBody Employee employeeDetails) {
+      @PathVariable Long id, @RequestBody Employee employeeDetails, @RequestParam String token) {
+    
+    // Validate JWT token from parameter
+    validateThirdPartyToken(token);
+    
     Employee employee =
         employeeService
             .getEmployeeById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
 
-    employee.setFirstName(employeeDetails.getFirstName());
-    employee.setLastName(employeeDetails.getLastName());
-    employee.setEmail(employeeDetails.getEmail());
-    employee.setDepartment(employeeDetails.getDepartment());
-    employee.setAge(employeeDetails.getAge());
+    // Update fields with null checks
+    if (employeeDetails.getFirstName() != null) {
+      employee.setFirstName(employeeDetails.getFirstName());
+    }
+    if (employeeDetails.getLastName() != null) {
+      employee.setLastName(employeeDetails.getLastName());
+    }
+    if (employeeDetails.getEmail() != null) {
+      employee.setEmail(employeeDetails.getEmail());
+    }
+    if (employeeDetails.getDepartment() != null) {
+      employee.setDepartment(employeeDetails.getDepartment());
+    }
+    if (employeeDetails.getAge() > 0) {
+      employee.setAge(employeeDetails.getAge());
+    }
 
     Employee updatedEmployee = employeeService.saveEmployee(employee);
     return ResponseEntity.ok(updatedEmployee);

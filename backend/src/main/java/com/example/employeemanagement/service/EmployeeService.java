@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /** This class represents the service for employees. */
 @Service
@@ -45,13 +46,35 @@ public class EmployeeService {
   }
 
   /**
-   * Update an employee.
+   * Search employees by keyword.
+   *
+   * @param keyword Keyword to search (null or empty returns all)
+   * @return List of employees matching the keyword
+   */
+  public List<Employee> searchEmployees(String keyword) {
+    List<Employee> allEmployees = employeeRepository.findAllWithDepartments();
+    
+    // If no keyword provided, return all employees
+    if (keyword == null || keyword.trim().isEmpty()) {
+      return allEmployees;
+    }
+    
+    String lowerKeyword = keyword.toLowerCase();
+
+    return allEmployees.stream()
+        .filter(emp -> 
+            (emp.getFirstName() != null && emp.getFirstName().toLowerCase().contains(lowerKeyword)) ||
+            (emp.getLastName() != null && emp.getLastName().toLowerCase().contains(lowerKeyword)) ||
+            (emp.getEmail() != null && emp.getEmail().toLowerCase().contains(lowerKeyword)))
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * Delete an employee.
    *
    * @param id ID of the employee to be updated
    */
   public void deleteEmployee(Long id) {
     employeeRepository.deleteById(id);
   }
-
-  
 }

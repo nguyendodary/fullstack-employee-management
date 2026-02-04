@@ -64,14 +64,17 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         .disable()
         .authorizeRequests()
         // Third-party employee APIs with JWT token - publicly accessible (token checked in controller)
-        .antMatchers("GET", "/api/employees", "/api/employees/search").permitAll()
+        .antMatchers("GET", "/api/employees/third-party/**").permitAll()
+        .antMatchers("POST", "/api/employees/third-party/**").permitAll()
+        .antMatchers("PUT", "/api/employees/third-party/**").permitAll()
+        .antMatchers("DELETE", "/api/employees/third-party/**").permitAll()
         // Read-only endpoints - accessible by all authenticated users (ADMIN, USER,
         // VIEWER) - but API key is checked in controller for /api/employees
         .antMatchers("GET", "/api/departments", "/api/departments/**").permitAll()
-        // Modify endpoints - only ADMIN and USER roles
+        // Modify endpoints - only ADMIN and USER roles (exclude third-party paths)
         .antMatchers("POST", "/api/employees", "/api/departments").hasAnyRole("ADMIN", "USER")
-        .antMatchers("PUT", "/api/employees/*", "/api/departments/*").hasAnyRole("ADMIN", "USER")
-        .antMatchers("DELETE", "/api/employees/*", "/api/departments/*").hasAnyRole("ADMIN", "USER")
+        .antMatchers("PUT", "/api/employees/{id}", "/api/departments/{id}").hasAnyRole("ADMIN", "USER")
+        .antMatchers("DELETE", "/api/employees/{id}", "/api/departments/{id}").hasAnyRole("ADMIN", "USER")
         // Authentication endpoints - publicly accessible
         .antMatchers("/register", "/authenticate", "/verify-username/**", "/reset-password").permitAll()
         // Swagger/API documentation - publicly accessible
